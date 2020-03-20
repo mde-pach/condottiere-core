@@ -85,10 +85,6 @@ def create_deck(deck):
 
 @api.route('')
 class UntargetedDeck(Resource):
-    def get(self):
-        deck = Deck.get()
-        return [card.serialize() for card in Card.select().where(Card.deck == deck).order_by(Card.order)]
-
     def post(self):
         if (Deck.select().count() == 0):
             deck = Deck()
