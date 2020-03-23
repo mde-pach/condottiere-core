@@ -11,6 +11,10 @@ flask-restx = "*"
 flask-cors = "*"
 peewee = "*"
 gunicorn = "*"
+fastapi = "*"
+uvicorn = "*"
+socketio = "*"
+python-socketio = {extras = ["asyncio_client"],version = "*"}
 
 [requires]
 python_version = "3.7"
