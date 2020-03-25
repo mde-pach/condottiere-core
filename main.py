@@ -1,13 +1,13 @@
 from fastapi import FastAPI, WebSocket
 from starlette.websockets import WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import players, deck
+from app.routers import players, decks, games
 from peewee import SqliteDatabase
 from app import models
 
 db = SqliteDatabase('condottiere.db')
 
-db.create_tables([models.Player, models.Card, models.Deck])
+db.create_tables([models.Player, models.Card, models.Deck, models.Game])
 
 app = FastAPI()
 
@@ -25,8 +25,13 @@ app.include_router(
 )
 
 app.include_router(
-    deck.router,
-    prefix="/deck",
+    decks.router,
+    prefix="/decks",
+)
+
+app.include_router(
+    games.router,
+    prefix="/games",
 )
 
 clients = []

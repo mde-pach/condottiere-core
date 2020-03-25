@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Header, HTTPException, WebSocket
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 from app import models
 import random
@@ -8,11 +8,13 @@ router = APIRouter()
 
 
 class Player(BaseModel):
-    name: str
+    name: str = None
+    game_id: int = None
 
 class Card(BaseModel):
     board: bool = None
     belongs_to_player: bool = True
+    player_id: int = None
 
 @router.get("")
 def get_players():
@@ -20,7 +22,8 @@ def get_players():
         {
             'name': player.name,
             'id': player.id,
-            'board': [card.serialize() for card in player.cards.where(models.Card.board == True)]
+            'board': [card.serialize() for card in player.cards.where(models.Card.board == True).order_by(models.Card.view_order)],
+            'game_id': player.game_id
         } for player in models.Player.select()
     ]
 
@@ -28,7 +31,20 @@ def get_players():
 def create_player(player_to_create: Player):
     player = models.Player(name=player_to_create.name, secret=''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(25)))
     player.save()
-    return player.serialize()
+    return {
+        'name': player.name,
+        'id': player.id,
+        'secret': player.secret
+    }
+
+@router.patch("/{player_id}")
+def update_player(player_id: int, player: Player, x_secret_token: str = Header(None)):
+    player_to_update = models.Player.get(player_id)
+    if player.name is not None:
+        player_to_update.name = player.name
+    player_to_update.game_id = player.game_id
+    player_to_update.save()
+    return 200
 
 @router.get("/me")
 def get_current_player(x_secret_token: str = Header(None)):
@@ -37,8 +53,10 @@ def get_current_player(x_secret_token: str = Header(None)):
         return {
             'name': player.name,
             'id': player.id,
-            'hand': [card.serialize() for card in player.cards.where(models.Card.board == False)],
-            'board': [card.serialize() for card in player.cards.where(models.Card.board == True)]
+            'money': player.money,
+            'hand': [card.serialize() for card in player.cards.where(models.Card.board == False).order_by(models.Card.view_order)],
+            'board': [card.serialize() for card in player.cards.where(models.Card.board == True).order_by(models.Card.view_order)],
+            'game_id': player.game_id
         }
     except:
         raise HTTPException(
@@ -52,7 +70,9 @@ def get_players(player_id: int):
     return {
         'name': player.name,
         'id': player.id,
-        'board': [card.serialize() for card in player.cards.where(models.Card.board == True)]
+        'money': player.money,
+        'board': [card.serialize() for card in player.cards.where(models.Card.board == True).order_by(models.Card.view_order)],
+        'game_id': player.game_id
     }
 
 @router.delete("/{player_id}")
@@ -62,7 +82,7 @@ def delete_player(player_id: int, x_secret_token: str = Header(None)):
         card.player = None
         card.board = False
         card.save()
-    player.delete().where(models.Player.id == player_id).execute()
+    models.Player.delete().where(models.Player.id == player_id).execute()
     return 200
 
 @router.patch("/{player_id}/cards/{card_id}")
@@ -75,6 +95,9 @@ def update_player_card(player_id: int, card_id: int, patch_to_card: Card, x_secr
         if patch_to_card.belongs_to_player is False:
             card.player = None
             card.board = False
+            card.discarded = True
+        if patch_to_card.player_id is not None:
+            card.player_id = patch_to_card.player_id
         card.save()
         return card.serialize()
     else:
@@ -82,4 +105,3 @@ def update_player_card(player_id: int, card_id: int, patch_to_card: Card, x_secr
             status_code=403,
             detail="Player token incorrect"
         )
-
