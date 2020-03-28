@@ -44,6 +44,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             for client in clients:
+                print('   ', client)
                 await client.send_text(data)
     except WebSocketDisconnect:
         clients.remove(websocket)

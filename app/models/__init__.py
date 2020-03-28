@@ -9,6 +9,7 @@ class Game(Model):
     name = CharField()
     need_money = BooleanField(default=False)
     can_give_cards = BooleanField(default=False)
+    hand_count = BooleanField(default=False)
     class Meta:
         database = db
 
